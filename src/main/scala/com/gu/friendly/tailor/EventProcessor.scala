@@ -2,13 +2,17 @@ package com.gu.friendly.tailor
 
 import java.util.{List => JList}
 
+import com.amazonaws.auth.profile.ProfileCredentialsProvider
+import com.amazonaws.regions.Regions._
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient
+import com.amazonaws.services.dynamodbv2.model.{AttributeAction, AttributeValue, AttributeValueUpdate}
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.{IRecordProcessor, IRecordProcessorCheckpointer, IRecordProcessorFactory}
 import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownReason
 import com.amazonaws.services.kinesis.model.Record
 import com.typesafe.scalalogging.LazyLogging
 import ophan.thrift.event.Event
 
-import scala.collection.convert.wrapAsScala._
+import scala.collection.convert.wrapAll._
 
 class EventProcessor() extends IRecordProcessor with LazyLogging {
 
@@ -23,15 +27,11 @@ class EventProcessor() extends IRecordProcessor with LazyLogging {
 
   override def processRecords(records: JList[Record], checkpointer: IRecordProcessorCheckpointer): Unit = {
     val actions = records
-      .map(deserializeToEvent)
+      .map(deserializeToEvent).filter(ev => ev.pageView.exists(pv => isInteresting(pv.page.url.path)))
 
     print(s"${actions.size} ")
+    actions.foreach(processPageView)
 
-//      .filter(isValid)
-//      .flatMap(toViewEvent)
-      // .foreach(saveViewEvent(es, _))
-
-    // Don't forget to tell Kinesis that we've processed the records
     checkpointer.checkpoint()
   }
 
@@ -45,35 +45,35 @@ class EventProcessor() extends IRecordProcessor with LazyLogging {
 }
 
 object EventProcessor extends LazyLogging {
-  private[this] val blacklistedUrls = Set("profile.theguardian.com")
+
+  val dynamoDBClient:AmazonDynamoDBClient  = new AmazonDynamoDBClient(new ProfileCredentialsProvider("membership")).withRegion(EU_WEST_1)
+
+  val isInteresting = Set(
+    "/commentisfree/2016/apr/28/david-cameron-unions-brexit-trade-union-bill-brendan-barber",
+    "/politics/2016/apr/28/leave-campaign-economists-for-brexit-report"
+  )
 
   def deserializeToEvent(record: Record): Event =
     ThriftSerializer.fromByteBuffer(record.getData)(Event.decoder)
 
-//
-//  def toViewEvent(ev: Event): Option[Action] = {
-//    ev.pageView map { pv =>
-//      val browserId = ev.browserId.id
-//      Action(
-//        browserId = browserId,
-//        platform = Device(pv),
-//        userId = ev.userId,
-//        url = pv.page.url.raw,
-//        section = pv.page.section,
-//        timestamp = new DateTime(ev.dt, DateTimeZone.UTC),
-//        pageType = PageType(pv))
-//    }
-//  }
-//
-//  def isValid(ev: Event): Boolean = ev.pageView.exists { pv =>
-//    val isBlacklisted = blacklistedUrls.exists(blUrl => pv.page.url.raw.contains(blUrl))
-//    val isValid = pv.validity == SuspectStatus.Valid || pv.validity == SuspectStatus.InvalidInternalGuardianTraffic
-//    isValid && !isBlacklisted
-//  }
+    def processPageView(ev: Event) = for {
+      pv <- ev.pageView
+      path = pv.page.url.path if isInteresting(path)
+    } {
+
+      val keyMap = Map(
+        "browserId" -> new AttributeValue().withS(ev.browserId.id),
+        "userId" -> new AttributeValue().withS(ev.userId.getOrElse("None"))
+      )
+
+      dynamoDBClient.updateItem(
+        "roberto-table-test",
+        keyMap,
+        Map("politics/eu-referendum" -> new AttributeValueUpdate().withAction(AttributeAction.ADD).withValue(new AttributeValue().withSS(path)))
+      )
+    }
 }
 
 object EventProcessorFactory extends IRecordProcessorFactory {
-  override def createProcessor(): EventProcessor = {
-    new EventProcessor()
-  }
+  override def createProcessor(): EventProcessor = new EventProcessor()
 }
