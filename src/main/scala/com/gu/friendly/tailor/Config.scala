@@ -9,8 +9,4 @@ object Config {
   val app = conf.getString("app")
   val stage = conf.getString("stage")
 
-  val indexNamePrefix = "uhapi"
-  val index = conf.getBoolean("index")
-
-
 }

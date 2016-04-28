@@ -1,11 +1,13 @@
 package com.gu.friendly.tailor
 
 import java.util.UUID
-import java.util.concurrent.atomic.AtomicBoolean
 
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
-import com.amazonaws.auth.{STSAssumeRoleSessionCredentialsProvider, AWSCredentialsProviderChain, DefaultAWSCredentialsProviderChain}
+import com.amazonaws.auth.{AWSCredentialsProviderChain, DefaultAWSCredentialsProviderChain, STSAssumeRoleSessionCredentialsProvider}
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.{InitialPositionInStream, KinesisClientLibConfiguration, Worker}
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 object EventsConsumer {
 
@@ -41,18 +43,12 @@ object EventsConsumer {
   // Create a worker, which will in turn create one or more EventProcessors
   val worker = new Worker(EventProcessorFactory, config)
 
-  private[this] val running = new AtomicBoolean(false)
-
-  def isRunning: Boolean = running.get
-
-  def start() = {
+  def start() = Future {
     worker.run()
-    running.set(true)
   }
 
   def stop() = {
     worker.shutdown()
-    running.set(false)
   }
 
 }

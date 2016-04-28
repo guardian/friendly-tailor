@@ -1,15 +1,14 @@
 package com.gu.friendly.tailor
 
-import java.util.{ List => JList }
+import java.util.{List => JList}
 
-import com.amazonaws.services.kinesis.clientlibrary.interfaces.{ IRecordProcessor, IRecordProcessorCheckpointer, IRecordProcessorFactory }
+import com.amazonaws.services.kinesis.clientlibrary.interfaces.{IRecordProcessor, IRecordProcessorCheckpointer, IRecordProcessorFactory}
 import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownReason
 import com.amazonaws.services.kinesis.model.Record
 import com.typesafe.scalalogging.LazyLogging
-import ophan.thrift.event.{ Event, SuspectStatus }
+import ophan.thrift.event.Event
 
 import scala.collection.convert.wrapAsScala._
-import scala.util.Try
 
 class EventProcessor() extends IRecordProcessor with LazyLogging {
 
@@ -25,6 +24,9 @@ class EventProcessor() extends IRecordProcessor with LazyLogging {
   override def processRecords(records: JList[Record], checkpointer: IRecordProcessorCheckpointer): Unit = {
     val actions = records
       .map(deserializeToEvent)
+
+    print(s"${actions.size} ")
+
 //      .filter(isValid)
 //      .flatMap(toViewEvent)
       // .foreach(saveViewEvent(es, _))
