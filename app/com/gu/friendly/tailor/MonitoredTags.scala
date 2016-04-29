@@ -16,6 +16,8 @@ object MonitoredTags extends LazyLogging {
 
   val interestingContent = TrieMap.empty[String, Set[String]]
 
+
+
   def tagsForPath(path: String): Set[String] = tags.filter(tag => interestingContent.get(tag).exists(_.contains(path)))
 
   def updateInterestingContent() = Future.sequence(for { tag <- tags } yield {
