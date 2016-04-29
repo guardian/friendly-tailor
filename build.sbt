@@ -46,8 +46,12 @@ riffRaffPackageType := (packageBin in Debian).value
 
 def env(key: String): Option[String] = Option(System.getenv(key))
 
-riffRaffBuildIdentifier := env("TRAVIS_BUILD_NUMBER").getOrElse("DEV")
-
 riffRaffUploadArtifactBucket := Option("riffraff-artifact")
 
 riffRaffUploadManifestBucket := Option("riffraff-builds")
+
+riffRaffManifestBranch := env("BRANCH_NAME").getOrElse("unknown_branch")
+
+riffRaffBuildIdentifier := env("BUILD_NUMBER").getOrElse("DEV")
+
+riffRaffManifestVcsUrl  := "git@github.com:guardian/friendly-tailor.git"
