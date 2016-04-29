@@ -22,6 +22,10 @@ libraryDependencies ++= Seq(
   "com.gu" %% "content-api-scala-client" % "8.2.1"
 )
 
+sources in (Compile,doc) := Seq.empty
+
+publishArtifact in (Compile, packageDoc) := false
+
 testOptions in Test ++= Seq(
     Tests.Argument("-oD") // display full stack errors and execution times in Scalatest output
 )
