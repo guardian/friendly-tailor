@@ -13,6 +13,8 @@ import com.typesafe.scalalogging.LazyLogging
 import ophan.thrift.event.Event
 
 import scala.collection.convert.wrapAll._
+import scala.collection.convert.decorateAsJava._
+import scala.util.Try
 
 class EventProcessor() extends IRecordProcessor with LazyLogging {
 
@@ -26,11 +28,13 @@ class EventProcessor() extends IRecordProcessor with LazyLogging {
   }
 
   override def processRecords(records: JList[Record], checkpointer: IRecordProcessorCheckpointer): Unit = {
-    val actions = records
-      .map(deserializeToEvent).filter(ev => ev.pageView.exists(pv => isInteresting(pv.page.url.path)))
-
+    val actions = records.map(deserializeToEvent)
     print(s"${actions.size} ")
-    actions.foreach(processPageView)
+    actions.foreach { ev =>
+      Try(processPageView(ev)).recover {
+        case e => println(e.getClass)
+      }
+    }
 
     checkpointer.checkpoint()
   }
@@ -48,30 +52,31 @@ object EventProcessor extends LazyLogging {
 
   val dynamoDBClient:AmazonDynamoDBClient  = new AmazonDynamoDBClient(new ProfileCredentialsProvider("membership")).withRegion(EU_WEST_1)
 
-  val isInteresting = Set(
-    "/commentisfree/2016/apr/28/david-cameron-unions-brexit-trade-union-bill-brendan-barber",
-    "/politics/2016/apr/28/leave-campaign-economists-for-brexit-report"
-  )
-
   def deserializeToEvent(record: Record): Event =
     ThriftSerializer.fromByteBuffer(record.getData)(Event.decoder)
 
-    def processPageView(ev: Event) = for {
-      pv <- ev.pageView
-      path = pv.page.url.path if isInteresting(path)
-    } {
+  def processPageView(ev: Event) = for {
+    pv <- ev.pageView
+    path = pv.page.url.path
+    tagsForPath = MonitoredTags.tagsForPath(path)
+    if tagsForPath.nonEmpty
+  } {
+    val keyMap = Map(
+      "browserId" -> new AttributeValue().withS(ev.browserId.id),
+      "userId" -> new AttributeValue().withS(ev.userId.getOrElse("None"))
+    )
 
-      val keyMap = Map(
-        "browserId" -> new AttributeValue().withS(ev.browserId.id),
-        "userId" -> new AttributeValue().withS(ev.userId.getOrElse("None"))
-      )
+    val addPathUpdate = new AttributeValueUpdate().withAction(AttributeAction.ADD).withValue(new AttributeValue().withSS(path))
 
+    Try(
       dynamoDBClient.updateItem(
         "roberto-table-test",
         keyMap,
-        Map("politics/eu-referendum" -> new AttributeValueUpdate().withAction(AttributeAction.ADD).withValue(new AttributeValue().withSS(path)))
-      )
+        tagsForPath.map(_ -> addPathUpdate).toMap.asJava
+      )).recover {
+      case e => println(e.getClass)
     }
+  }
 }
 
 object EventProcessorFactory extends IRecordProcessorFactory {

@@ -43,7 +43,9 @@ object EventsConsumer {
   // Create a worker, which will in turn create one or more EventProcessors
   val worker = new Worker(EventProcessorFactory, config)
 
-  def start() = Future {
+  def start() = for {
+    _ <- MonitoredTags.updateInterestingContent()
+  } {
     worker.run()
   }
 
