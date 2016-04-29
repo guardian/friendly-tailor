@@ -2,7 +2,11 @@ name := "friendly-tailor"
 
 version := "1.0-SNAPSHOT"
 
-lazy val root = (project in file(".")).enablePlugins(PlayScala)
+lazy val root = (project in file(".")).enablePlugins(
+  PlayScala,
+  RiffRaffArtifact,
+  JDebPackaging
+)
 
 scalaVersion := "2.11.8"
 scalacOptions ++= Seq("-feature")
@@ -22,3 +26,24 @@ testOptions in Test ++= Seq(
     Tests.Argument("-oD") // display full stack errors and execution times in Scalatest output
 )
 
+import com.typesafe.sbt.packager.archetypes.ServerLoader.Systemd
+serverLoading in Debian := Systemd
+
+debianPackageDependencies := Seq("openjdk-8-jre-headless")
+
+maintainer := "The Maintainer <the.maintainer@company.com>"
+
+packageSummary := "Brief description"
+
+packageDescription := """Slightly longer description"""
+
+
+riffRaffPackageType := (packageBin in Debian).value
+
+def env(key: String): Option[String] = Option(System.getenv(key))
+
+riffRaffBuildIdentifier := env("TRAVIS_BUILD_NUMBER").getOrElse("DEV")
+
+riffRaffUploadArtifactBucket := Option("riffraff-artifact")
+
+riffRaffUploadManifestBucket := Option("riffraff-builds")

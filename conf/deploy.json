@@ -1,0 +1,19 @@
+{
+  "defaultStacks": ["membership"],
+  "packages": {
+    "friendly-tailor": {
+      "type": "autoscaling",
+      "data": {
+        "bucket": "gu-membership-attribute-service-dist"
+      }
+    }
+  },
+  "recipes":{
+    "default":{
+      "actionsBeforeApp": ["friendly-tailor.uploadArtifacts", "friendly-tailor.deploy"]
+    },
+    "artifactUploadOnly": {
+      "actions": [ "friendly-tailor.uploadArtifacts" ]
+    }
+  }
+}
