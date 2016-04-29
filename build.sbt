@@ -2,7 +2,13 @@ name := "friendly-tailor"
 
 version := "1.0-SNAPSHOT"
 
-lazy val root = (project in file("."))
+lazy val root = (project in file(".")).enablePlugins(BuildInfoPlugin).
+  settings(
+    buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion),
+    buildInfoPackage := "hello",
+    buildInfoObject := "Info"
+  )
+
 
 scalaVersion := "2.11.8"
 scalacOptions ++= Seq("-feature")
