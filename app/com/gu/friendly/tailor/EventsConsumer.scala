@@ -31,7 +31,7 @@ object EventsConsumer {
       new ProfileCredentialsProvider("ophan")
     )
 
-  val defaultCredentialsProvider = new DefaultAWSCredentialsProviderChain
+  val defaultCredentialsProvider = new ProfileCredentialsProvider("membership")
 
   // Unique ID for the worker thread
   val workerId = UUID.randomUUID().toString

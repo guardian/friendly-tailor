@@ -1,12 +1,14 @@
 package controllers
 
+import com.gu.friendly.tailor.EventsConsumer
 import com.typesafe.scalalogging.LazyLogging
 import play.api.mvc._
 
 object Management extends Controller with LazyLogging {
 
   def healthcheck = Action {
-    Ok("OK")
+
+    Ok(s"OK ${EventsConsumer.worker}")
   }
 
 }
