@@ -10,7 +10,9 @@ import scala.concurrent.Future
 
 object MonitoredTags extends LazyLogging {
 
-  val client = new GuardianContentClient(Config.contentApiKey)
+  val client = new GuardianContentClient(Config.contentApiKey){
+    override val targetUrl=Config.contentTargetUrl
+  }
 
   val tags = Set("politics/eu-referendum", "profile/roberto-tyley")
 
@@ -21,12 +23,16 @@ object MonitoredTags extends LazyLogging {
   def tagsForPath(path: String): Set[String] = tags.filter(tag => interestingContent.get(tag).exists(_.contains(path)))
 
   def updateInterestingContent() = Future.sequence(for { tag <- tags } yield {
-    for {
+    val f = for {
       result <- client.getResponse(SearchQuery().tag(tag).pageSize(200))
     } yield {
       val pathSet = result.results.map(c => s"/${c.id}").toSet
       logger.info(s"$tag : ${pathSet.size}")
       interestingContent(tag) = pathSet
     }
+    f.onFailure{
+      case e => logger.error(s"problem getting $tag", e)
+    }
+    f
   })
 }
