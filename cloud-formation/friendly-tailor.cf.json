@@ -39,7 +39,6 @@
         }
     },
     "Resources" : {
-
         "AutoScalingGroup" : {
             "Type" : "AWS::AutoScaling::AutoScalingGroup",
             "Properties" : {
@@ -75,8 +74,8 @@
                       "apt-get -y update",
                       "apt-get -y upgrade",
                       "/opt/features/ssh-keys/initialise-keys-and-cron-job.sh -l -b github-team-keys -t Membership-and-Subscriptions || true \n",
-                      {"Fn::Join":["/", ["wget https://s3-eu-west-1.amazonaws.com/gu-membership-attribute-service-dist", { "Ref" : "Stack" }, { "Ref" : "Stage" }, "friendly-tailor/friendly-tailor_1.0_all.deb"]]},
-                      "dpkg -i friendly-tailor_1.0_all.deb"
+                      {"Fn::Join":["/", ["wget https://s3-eu-west-1.amazonaws.com/gu-membership-attribute-service-dist", { "Ref" : "Stack" }, { "Ref" : "Stage" }, "friendly-tailor/friendly-tailor_1.0-SNAPSHOT_all.deb"]]},
+                      "dpkg -i friendly-tailor_1.0-SNAPSHOT_all.deb"
                     ]]
                 }}
             }
