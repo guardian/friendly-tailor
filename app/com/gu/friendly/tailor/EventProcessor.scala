@@ -52,6 +52,10 @@ object EventProcessor extends LazyLogging {
 
   val dynamoDBClient:AmazonDynamoDBClient  = new AmazonDynamoDBClient(new ProfileCredentialsProvider("membership")).withRegion(EU_WEST_1)
 
+  val tableName = s"friendly-tailor-${Config.stage}"
+
+  logger.info(s"Table name = $tableName")
+
   def deserializeToEvent(record: Record): Event =
     ThriftSerializer.fromByteBuffer(record.getData)(Event.decoder)
 
@@ -70,7 +74,7 @@ object EventProcessor extends LazyLogging {
 
     Try(
       dynamoDBClient.updateItem(
-        "roberto-table-test",
+        tableName,
         keyMap,
         tagsForPath.map(_ -> addPathUpdate).toMap.asJava
       )).recover {
