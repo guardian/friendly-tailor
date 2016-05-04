@@ -3,7 +3,7 @@ package com.gu.friendly.tailor
 import java.util.UUID
 
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
-import com.amazonaws.auth.{AWSCredentialsProviderChain, DefaultAWSCredentialsProviderChain, STSAssumeRoleSessionCredentialsProvider}
+import com.amazonaws.auth.{AWSCredentialsProviderChain, DefaultAWSCredentialsProviderChain, InstanceProfileCredentialsProvider, STSAssumeRoleSessionCredentialsProvider}
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.{InitialPositionInStream, KinesisClientLibConfiguration, Worker}
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -31,7 +31,10 @@ object EventsConsumer {
       new ProfileCredentialsProvider("ophan")
     )
 
-  val defaultCredentialsProvider = new ProfileCredentialsProvider("membership")
+  val defaultCredentialsProvider = new AWSCredentialsProviderChain(
+    new ProfileCredentialsProvider("membership"),
+    new InstanceProfileCredentialsProvider
+  )
 
   // Unique ID for the worker thread
   val workerId = UUID.randomUUID().toString
