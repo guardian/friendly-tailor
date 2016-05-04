@@ -35,6 +35,16 @@ serverLoading in Debian := Systemd
 
 debianPackageDependencies := Seq("openjdk-8-jre-headless")
 
+javaOptions in Universal ++= Seq(
+  "-Dpidfile.path=/dev/null",
+  "-J-XX:MaxRAMFraction=2",
+  "-J-XX:InitialRAMFraction=2",
+  "-J-XX:MaxMetaspaceSize=500m",
+  "-J-XX:+PrintGCDetails",
+  "-J-XX:+PrintGCDateStamps",
+  s"-J-Xloggc:/var/log/${name.value}/gc.log"
+)
+
 maintainer := "The Maintainer <the.maintainer@company.com>"
 
 packageSummary := "Brief description"
