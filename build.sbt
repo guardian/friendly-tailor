@@ -45,12 +45,11 @@ javaOptions in Universal ++= Seq(
   s"-J-Xloggc:/var/log/${name.value}/gc.log"
 )
 
-maintainer := "The Maintainer <the.maintainer@company.com>"
+maintainer := "Membership Discovery <membership.dev@theguardian.com>"
 
-packageSummary := "Brief description"
+packageSummary := "Friendly Tailor service"
 
-packageDescription := """Slightly longer description"""
-
+packageDescription := """Friendly Tailor reads and stores Ophan events to measure reader background knowledge"""
 
 riffRaffPackageType := (packageBin in Debian).value
 
