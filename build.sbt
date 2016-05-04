@@ -35,12 +35,21 @@ serverLoading in Debian := Systemd
 
 debianPackageDependencies := Seq("openjdk-8-jre-headless")
 
-maintainer := "The Maintainer <the.maintainer@company.com>"
+javaOptions in Universal ++= Seq(
+  "-Dpidfile.path=/dev/null",
+  "-J-XX:MaxRAMFraction=2",
+  "-J-XX:InitialRAMFraction=2",
+  "-J-XX:MaxMetaspaceSize=500m",
+  "-J-XX:+PrintGCDetails",
+  "-J-XX:+PrintGCDateStamps",
+  s"-J-Xloggc:/var/log/${name.value}/gc.log"
+)
 
-packageSummary := "Brief description"
+maintainer := "Membership Discovery <membership.dev@theguardian.com>"
 
-packageDescription := """Slightly longer description"""
+packageSummary := "Friendly Tailor service"
 
+packageDescription := """Friendly Tailor reads and stores Ophan events to measure reader background knowledge"""
 
 riffRaffPackageType := (packageBin in Debian).value
 
