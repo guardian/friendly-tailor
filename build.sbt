@@ -3,7 +3,6 @@ name := "friendly-tailor"
 version := "1.0-SNAPSHOT"
 
 lazy val root = (project in file(".")).enablePlugins(
-  BuildInfoPlugin,
   PlayScala,
   RiffRaffArtifact,
   JDebPackaging
@@ -26,11 +25,6 @@ libraryDependencies ++= Seq(
 sources in (Compile,doc) := Seq.empty
 
 publishArtifact in (Compile, packageDoc) := false
-
-
-scroogeThriftOutputFolder in Compile := sourceManaged.value / "thrift"
-
-managedSourceDirectories in Compile += (scroogeThriftOutputFolder in Compile).value
 
 testOptions in Test ++= Seq(
     Tests.Argument("-oD") // display full stack errors and execution times in Scalatest output
@@ -70,17 +64,3 @@ riffRaffManifestBranch := env("BRANCH_NAME").getOrElse("unknown_branch")
 riffRaffBuildIdentifier := env("BUILD_NUMBER").getOrElse("DEV")
 
 riffRaffManifestVcsUrl  := "git@github.com:guardian/friendly-tailor.git"
-
-
-buildInfoKeys := Seq[BuildInfoKey](
-  name,
-  BuildInfoKey.constant("gitCommitId", env("BUILD_VCS_NUMBER") getOrElse (try {
-    "git rev-parse HEAD".!!.trim
-  } catch {
-    case e: Exception => "unknown"
-  })),
-  BuildInfoKey.constant("buildNumber", env("BUILD_NUMBER") getOrElse "DEV"),
-  BuildInfoKey.constant("buildTime", System.currentTimeMillis)
-)
-
-buildInfoPackage := "app"
