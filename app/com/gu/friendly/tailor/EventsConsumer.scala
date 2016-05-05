@@ -17,7 +17,7 @@ object EventsConsumer {
   // The Kinesis stream you want to consume from
   val streamName = "ophan-events"
 
-  val roleArn = "arn:aws:iam::021353022223:role/discussion-read-ophan-events"
+  val roleArn = "arn:aws:iam::021353022223:role/membership-read-ophan-events"
 
   // The first time the app ever runs, start processing from the oldest event available
   val initialPosition = InitialPositionInStream.LATEST

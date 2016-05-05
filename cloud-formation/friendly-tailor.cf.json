@@ -151,6 +151,18 @@
                         }]
                     }
                 },
+                  {
+                        "PolicyName": "KinesisSTSAssumeRolePolicy",
+                        "PolicyDocument": {
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": "sts:AssumeRole",
+                                    "Resource": "arn:aws:iam::021353022223:role/discussion-read-ophan-events"
+                                }
+                            ]
+                        }
+                  },
                 {
                     "PolicyName": "PushMetrics",
                     "PolicyDocument": {
