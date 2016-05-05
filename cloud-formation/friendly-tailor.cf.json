@@ -158,7 +158,7 @@
                                 {
                                     "Effect": "Allow",
                                     "Action": "sts:AssumeRole",
-                                    "Resource": "arn:aws:iam::021353022223:role/discussion-read-ophan-events"
+                                    "Resource": "arn:aws:iam::021353022223:role/membership-read-ophan-events"
                                 }
                             ]
                         }
