@@ -58,7 +58,7 @@ class EventProcessor() extends IRecordProcessor with LazyLogging {
 
 object EventProcessor extends LazyLogging {
 
-  val dynamoDBClient:AmazonDynamoDBClient  = new AmazonDynamoDBClient(new ProfileCredentialsProvider("membership")).withRegion(EU_WEST_1)
+  val dynamoDBClient:AmazonDynamoDBClient  = new AmazonDynamoDBClient(EventsConsumer.defaultCredentialsProvider).withRegion(EU_WEST_1)
 
   val tableName = s"${Config.app}-${Config.stage}"
 
