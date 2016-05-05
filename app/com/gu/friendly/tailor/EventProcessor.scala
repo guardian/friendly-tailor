@@ -10,11 +10,18 @@ import com.amazonaws.services.kinesis.clientlibrary.interfaces.{IRecordProcessor
 import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownReason
 import com.amazonaws.services.kinesis.model.Record
 import com.typesafe.scalalogging.LazyLogging
-import ophan.thrift.event.Event
+import ophan.thrift.event.{AssignedId, Event}
 
 import scala.collection.convert.wrapAll._
 import scala.collection.convert.decorateAsJava._
 import scala.util.Try
+
+case class RelevantPageView(
+                path: String,
+                tags: Set[String],
+                browserId: AssignedId,
+                userId: Option[String]
+                           )
 
 class EventProcessor() extends IRecordProcessor with LazyLogging {
 
@@ -28,11 +35,12 @@ class EventProcessor() extends IRecordProcessor with LazyLogging {
   }
 
   override def processRecords(records: JList[Record], checkpointer: IRecordProcessorCheckpointer): Unit = {
-    val actions = records.map(deserializeToEvent)
-    print(s"${actions.size} ")
-    actions.foreach { ev =>
-      Try(processPageView(ev)).recover {
-        case e => println(e.getClass)
+    val allEvents = records.map(deserializeToEvent)
+    val relevantPageViews = allEvents.flatMap(relevantPageView)
+    logger.info(s"received ${allEvents.size} events, ${relevantPageViews.size} relevant page views")
+    relevantPageViews.foreach { pageView =>
+      Try(processPageView(pageView)).recover {
+        case e => logger.error(s"failed to process $pageView", e)
       }
     }
 
@@ -59,26 +67,28 @@ object EventProcessor extends LazyLogging {
   def deserializeToEvent(record: Record): Event =
     ThriftSerializer.fromByteBuffer(record.getData)(Event.decoder)
 
-  def processPageView(ev: Event) = for {
+  def relevantPageView(ev: Event):Option[RelevantPageView] = for {
     pv <- ev.pageView
     path = pv.page.url.path
     tagsForPath = MonitoredTags.tagsForPath(path)
     if tagsForPath.nonEmpty
-  } {
+  } yield RelevantPageView(path, tagsForPath, ev.browserId, ev.userId)
+
+  def processPageView(relevantPageView: RelevantPageView) = {
     val keyMap = Map(
-      "browserId" -> new AttributeValue().withS(ev.browserId.id),
-      "userId" -> new AttributeValue().withS(ev.userId.getOrElse("None"))
+      "browserId" -> new AttributeValue().withS(relevantPageView.browserId.id),
+      "userId" -> new AttributeValue().withS(relevantPageView.userId.getOrElse("None"))
     )
 
-    val addPathUpdate = new AttributeValueUpdate().withAction(AttributeAction.ADD).withValue(new AttributeValue().withSS(path))
+    val addPathUpdate = new AttributeValueUpdate().withAction(AttributeAction.ADD).withValue(new AttributeValue().withSS(relevantPageView.path))
 
     Try(
       dynamoDBClient.updateItem(
         tableName,
         keyMap,
-        tagsForPath.map(_ -> addPathUpdate).toMap.asJava
+        relevantPageView.tags.map(_ -> addPathUpdate).toMap.asJava
       )).recover {
-      case e => println(e.getClass)
+      case e => logger.error(s"failed to store page-view $relevantPageView", e)
     }
   }
 }
