@@ -76,6 +76,11 @@
                       "/opt/features/ssh-keys/initialise-keys-and-cron-job.sh -l -b github-team-keys -t Membership-and-Subscriptions || true \n",
                       "mkdir /etc/gu",
                       {"Fn::Join":["", ["aws --region ", { "Ref": "AWS::Region" }, " s3 cp s3://membership-private/", { "Ref" : "Stage" }, "/friendly-tailor.conf /etc/gu"]]},
+
+                      "cat >/etc/gu/friendly-tailor.stage.conf << EOF",
+                      { "Fn::Join": [ "", [ "stage=", { "Ref": "Stage"} ] ] },
+                      "EOF",
+
                       {"Fn::Join":["/", ["wget https://s3-eu-west-1.amazonaws.com/gu-membership-attribute-service-dist", { "Ref" : "Stack" }, { "Ref" : "Stage" }, "friendly-tailor/friendly-tailor_1.0-SNAPSHOT_all.deb"]]},
                       "dpkg -i friendly-tailor_1.0-SNAPSHOT_all.deb"
                     ]]
@@ -117,6 +122,23 @@
                             }
                         ]
                     }
+                },
+                {
+                  "PolicyName": "DynamoPolicy",
+                  "PolicyDocument": {
+                    "Statement": [
+                      {
+                        "Effect": "Allow",
+                        "Action": [ "dynamodb:*" ],
+                        "Resource": [ { "Fn::Join": [ "", [ "arn:aws:dynamodb:eu-west-1:865473395570:table/", { "Ref": "App" }, "-", { "Ref": "Stage" } ] ] } ]
+                      },
+                      {
+                        "Effect": "Allow",
+                        "Action": [ "dynamodb:*" ],
+                        "Resource": [ { "Fn::Join": [ "", [ "arn:aws:dynamodb:eu-west-1:865473395570:table/", { "Ref": "Stack"}, "-", { "Ref": "App" }, "-kinesis-", { "Ref": "Stage"} ] ] } ]
+                      }
+                    ]
+                  }
                 },
                 {
                     "PolicyName": "PushLogs",

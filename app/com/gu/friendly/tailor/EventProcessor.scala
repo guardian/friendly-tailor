@@ -52,7 +52,7 @@ object EventProcessor extends LazyLogging {
 
   val dynamoDBClient:AmazonDynamoDBClient  = new AmazonDynamoDBClient(new ProfileCredentialsProvider("membership")).withRegion(EU_WEST_1)
 
-  val tableName = s"friendly-tailor-${Config.stage}"
+  val tableName = s"${Config.app}-${Config.stage}"
 
   logger.info(s"Table name = $tableName")
 
