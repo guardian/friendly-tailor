@@ -12,7 +12,7 @@ import scala.concurrent.Future
 object EventsConsumer {
 
   // This application name is used by KCL to store the checkpoint data about how much of the stream you have consumed.
-  val applicationName = s"${Config.stack}-${Config.app}-${Config.stage}"
+  val applicationName = s"${Config.stack}-${Config.app}-kinesis-${Config.stage}"
 
   // The Kinesis stream you want to consume from
   val streamName = "ophan-events"
