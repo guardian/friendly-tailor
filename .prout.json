@@ -1,0 +1,8 @@
+{
+    "checkpoints": {
+        "PROD": {
+            "url": "http://friendly-elasticl-9snnlm6xn0d5-1747586787.eu-west-1.elb.amazonaws.com/healthcheck",
+            "overdue": "10M"
+        }
+    }
+}
