@@ -7,8 +7,7 @@ import play.api.mvc._
 object Management extends Controller with LazyLogging {
 
   def healthcheck = Action {
-
-    Ok(s"OK ${EventsConsumer.worker}")
+    Ok(s"OK\n${app.BuildInfo.gitCommitId}\n${EventsConsumer.worker}")
   }
 
 }
