@@ -130,12 +130,12 @@
                       {
                         "Effect": "Allow",
                         "Action": [ "dynamodb:*" ],
-                        "Resource": [ { "Fn::Join": [ "", [ "arn:aws:dynamodb:eu-west-1:865473395570:table/", { "Ref": "App" }, "-", { "Ref": "Stage" } ] ] } ]
+                        "Resource": [ { "Fn::Join": [ "", [ "arn:aws:dynamodb:eu-west-1:865473395570:table/friendly-tailor-", { "Ref": "Stage" } ] ] } ]
                       },
                       {
                         "Effect": "Allow",
                         "Action": [ "dynamodb:*" ],
-                        "Resource": [ { "Fn::Join": [ "", [ "arn:aws:dynamodb:eu-west-1:865473395570:table/", { "Ref": "Stack"}, "-", { "Ref": "App" }, "-kinesis-", { "Ref": "Stage"} ] ] } ]
+                        "Resource": [ { "Fn::Join": [ "", [ "arn:aws:dynamodb:eu-west-1:865473395570:table/", { "Ref": "Stack"}, "-friendly-tailor-kinesis-", { "Ref": "Stage"} ] ] } ]
                       }
                     ]
                   }
