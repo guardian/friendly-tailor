@@ -49,6 +49,7 @@ object EventsConsumer {
   def start() = for {
     _ <- MonitoredTags.updateInterestingContent()
   } {
+    MonitoredTags.start()
     worker.run()
   }
 
