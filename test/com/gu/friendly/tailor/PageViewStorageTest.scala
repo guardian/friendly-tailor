@@ -4,50 +4,74 @@ import java.util
 
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType._
 import com.amazonaws.services.dynamodbv2.model.{AttributeValue, PutItemRequest, UpdateItemRequest}
+import ophan.thrift.event.AssignedId
 
 import scala.collection.convert.wrapAsJava._
 import scala.collection.convert.decorateAll._
+import com.gu.scanamo._
+import com.gu.scanamo.syntax._
+
+case class StoredPageView(browserId: String, userId: String, pageViewsByTag: Map[String, Map[String, Long]])
 
 class PageViewStorageTest extends org.scalatest.FunSpec with org.scalatest.Matchers {
+
+  val client = LocalDynamoDB.client()
+  val pageViewStorage = new PageViewStorage(client)
+  val browserFoo = AssignedId("foo")
+  val fooLooksAtJez = RelevantPageView(
+    "/politics/2016/may/13/jeremy-corbyn-young-voters-eu-referendum",
+    Set("politics/eu-referendum"),
+    browserFoo,
+    None
+  )
+  val fooLooksAtRoberto = RelevantPageView(
+    "/info/developer-blog/2015/feb/03/prout-is-your-pull-request-out",
+    Set("profile/roberto-tyley"),
+    browserFoo,
+    None
+  )
+  val fooLooksAtBojo = RelevantPageView(
+    "/politics/2016/may/17/boris-johnon-no-guarantee-vote-to-remain-will-settle-eu-issue-for-ever",
+    Set("politics/eu-referendum"),
+    browserFoo,
+    None
+  )
+  val entryKey = pageViewStorage.entryKeyFor(fooLooksAtJez)
+  val table = pageViewStorage.table
+
+  def getFoo(): StoredPageView = {
+    Scanamo.get[StoredPageView](client)(table)('browserId -> "foo" and 'userId -> "None").get.toOption.get
+  }
+
   it("should update a nested map") {
-    val client = LocalDynamoDB.client()
-
-    val table = "fish"
-    val entryKey = Map("browserId" -> new AttributeValue().withS("foo"), "userId" -> new AttributeValue().withS("bar"))
-
-    def putPageView(tag: String, path: String, time: Long) {
-      client.updateItem(new UpdateItemRequest()
-        .withTableName(table)
-        .withKey(entryKey)
-        .withUpdateExpression("SET pageViewsByTag = if_not_exists(pageViewsByTag,:initialMap)")
-        .withExpressionAttributeValues(Map(":initialMap" -> new AttributeValue().addMEntry(tag, new AttributeValue().addMEntry(path, new AttributeValue().withN(time.toString))))))
-
-      client.updateItem(new UpdateItemRequest()
-          .withTableName(table)
-          .withKey(entryKey)
-          .withUpdateExpression("SET pageViewsByTag.#tag = if_not_exists(pageViewsByTag.#tag, :initialTagMap)")
-          .withExpressionAttributeNames(Map("#tag" -> tag))
-          .withExpressionAttributeValues(Map(":initialTagMap" -> new AttributeValue().addMEntry(path, new AttributeValue().withN(time.toString))))
-      )
-
-      client.updateItem(new UpdateItemRequest()
-        .withTableName(table)
-        .withKey(entryKey)
-        .withUpdateExpression("SET pageViewsByTag.#tag.#path = :time")
-        .withExpressionAttributeNames(Map("#tag" -> tag, "#path" -> path))
-        .withExpressionAttributeValues(Map(":time" -> new AttributeValue().withN(time.toString))))
-    }
 
     LocalDynamoDB.usingTable(client)(table)('browserId -> S, 'userId -> S) {
 
+      pageViewStorage.putPageView(fooLooksAtJez, 1234)
 
-      putPageView("politics/eu-referendum", "/politics/2016/may/13/jeremy-corbyn-young-voters-eu-referendum", 1234)
+      getFoo().pageViewsByTag should equal(Map("politics/eu-referendum" -> Map("/politics/2016/may/13/jeremy-corbyn-young-voters-eu-referendum" -> 1234)))
 
-      client.getItem(table, entryKey).getItem().get("pageViewsByTag").getM should contain key "politics/eu-referendum"
+      pageViewStorage.putPageView(fooLooksAtRoberto, 5678)
 
-      putPageView("profile/roberto-tyley", "/info/developer-blog/2015/feb/03/prout-is-your-pull-request-out", 5678)
+      getFoo().pageViewsByTag should equal(Map(
+        "politics/eu-referendum" -> Map("/politics/2016/may/13/jeremy-corbyn-young-voters-eu-referendum" -> 1234),
+        "profile/roberto-tyley" -> Map("/info/developer-blog/2015/feb/03/prout-is-your-pull-request-out" -> 5678)
+      ))
 
-      client.getItem(table, entryKey).getItem().get("pageViewsByTag").getM.keySet().asScala should be (Set("politics/eu-referendum","profile/roberto-tyley"))
+    }
+  }
+
+  it("should update a nested map on the same tag") {
+    LocalDynamoDB.usingTable(client)(table)('browserId -> S, 'userId -> S) {
+
+      pageViewStorage.putPageView(fooLooksAtJez, 1234)
+
+      pageViewStorage.putPageView(fooLooksAtBojo, 1024)
+
+      getFoo().pageViewsByTag should equal(Map(
+        "politics/eu-referendum" -> Map("/politics/2016/may/13/jeremy-corbyn-young-voters-eu-referendum" -> 1234,
+          "/politics/2016/may/17/boris-johnon-no-guarantee-vote-to-remain-will-settle-eu-issue-for-ever" -> 1024)
+      ))
     }
   }
 }

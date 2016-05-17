@@ -21,7 +21,8 @@ libraryDependencies ++= Seq(
   "com.amazonaws" % "amazon-kinesis-client" % "1.6.2",
   "com.amazonaws" % "aws-java-sdk-sts" % "1.10.73",
   "com.gu" %% "content-api-scala-client" % "8.2.1",
-  "org.scalatest" %% "scalatest" % "2.2.6" % "test"
+  "org.scalatest" %% "scalatest" % "2.2.6" % "test",
+  "com.gu" %% "scanamo" % "0.4.0" % "test"
 )
 
 sources in (Compile,doc) := Seq.empty
