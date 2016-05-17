@@ -1,17 +1,13 @@
 package com.gu.friendly.tailor
 
-import java.util
+import java.time.Instant
 
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType._
-import com.amazonaws.services.dynamodbv2.model.{AttributeValue, PutItemRequest, UpdateItemRequest}
-import ophan.thrift.event.AssignedId
-
-import scala.collection.convert.wrapAsJava._
-import scala.collection.convert.decorateAll._
 import com.gu.scanamo._
 import com.gu.scanamo.syntax._
+import ophan.thrift.event.AssignedId
 
-case class StoredPageView(browserId: String, userId: String, pageViewsByTag: Map[String, Map[String, Long]])
+case class StoredPageViews(browserId: String, userId: String, pageViewsByTag: Map[String, Map[String, Long]])
 
 class PageViewStorageTest extends org.scalatest.FunSpec with org.scalatest.Matchers {
 
@@ -21,41 +17,44 @@ class PageViewStorageTest extends org.scalatest.FunSpec with org.scalatest.Match
   val fooLooksAtJez = RelevantPageView(
     "/politics/2016/may/13/jeremy-corbyn-young-voters-eu-referendum",
     Set("politics/eu-referendum"),
+    Instant.ofEpochMilli(1),
     browserFoo,
     None
   )
   val fooLooksAtRoberto = RelevantPageView(
     "/info/developer-blog/2015/feb/03/prout-is-your-pull-request-out",
     Set("profile/roberto-tyley"),
+    Instant.ofEpochMilli(2),
     browserFoo,
     None
   )
   val fooLooksAtBojo = RelevantPageView(
     "/politics/2016/may/17/boris-johnon-no-guarantee-vote-to-remain-will-settle-eu-issue-for-ever",
     Set("politics/eu-referendum"),
+    Instant.ofEpochMilli(3),
     browserFoo,
     None
   )
   val entryKey = pageViewStorage.entryKeyFor(fooLooksAtJez)
   val table = pageViewStorage.table
 
-  def getFoo(): StoredPageView = {
-    Scanamo.get[StoredPageView](client)(table)('browserId -> "foo" and 'userId -> "None").get.toOption.get
+  def getStoredPageViewsForFoo(): StoredPageViews = {
+    Scanamo.get[StoredPageViews](client)(table)('browserId -> "foo" and 'userId -> "None").get.toOption.get
   }
 
   it("should update a nested map") {
 
     LocalDynamoDB.usingTable(client)(table)('browserId -> S, 'userId -> S) {
 
-      pageViewStorage.putPageView(fooLooksAtJez, 1234)
+      pageViewStorage.putPageView(fooLooksAtJez)
 
-      getFoo().pageViewsByTag should equal(Map("politics/eu-referendum" -> Map("/politics/2016/may/13/jeremy-corbyn-young-voters-eu-referendum" -> 1234)))
+      getStoredPageViewsForFoo().pageViewsByTag should equal(Map("politics/eu-referendum" -> Map("/politics/2016/may/13/jeremy-corbyn-young-voters-eu-referendum" -> 1L)))
 
-      pageViewStorage.putPageView(fooLooksAtRoberto, 5678)
+      pageViewStorage.putPageView(fooLooksAtRoberto)
 
-      getFoo().pageViewsByTag should equal(Map(
-        "politics/eu-referendum" -> Map("/politics/2016/may/13/jeremy-corbyn-young-voters-eu-referendum" -> 1234),
-        "profile/roberto-tyley" -> Map("/info/developer-blog/2015/feb/03/prout-is-your-pull-request-out" -> 5678)
+      getStoredPageViewsForFoo().pageViewsByTag should equal(Map(
+        "politics/eu-referendum" -> Map("/politics/2016/may/13/jeremy-corbyn-young-voters-eu-referendum" -> 1L),
+        "profile/roberto-tyley" -> Map("/info/developer-blog/2015/feb/03/prout-is-your-pull-request-out" -> 2L)
       ))
 
     }
@@ -64,13 +63,12 @@ class PageViewStorageTest extends org.scalatest.FunSpec with org.scalatest.Match
   it("should update a nested map on the same tag") {
     LocalDynamoDB.usingTable(client)(table)('browserId -> S, 'userId -> S) {
 
-      pageViewStorage.putPageView(fooLooksAtJez, 1234)
+      pageViewStorage.putPageView(fooLooksAtJez)
+      pageViewStorage.putPageView(fooLooksAtBojo)
 
-      pageViewStorage.putPageView(fooLooksAtBojo, 1024)
-
-      getFoo().pageViewsByTag should equal(Map(
-        "politics/eu-referendum" -> Map("/politics/2016/may/13/jeremy-corbyn-young-voters-eu-referendum" -> 1234,
-          "/politics/2016/may/17/boris-johnon-no-guarantee-vote-to-remain-will-settle-eu-issue-for-ever" -> 1024)
+      getStoredPageViewsForFoo().pageViewsByTag should equal(Map(
+        "politics/eu-referendum" -> Map("/politics/2016/may/13/jeremy-corbyn-young-voters-eu-referendum" -> 1L,
+          "/politics/2016/may/17/boris-johnon-no-guarantee-vote-to-remain-will-settle-eu-issue-for-ever" -> 3L)
       ))
     }
   }

@@ -1,10 +1,11 @@
 package com.gu.friendly.tailor
 
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient
+import com.amazonaws.services.dynamodbv2.{AmazonDynamoDBAsyncClient, AmazonDynamoDBClient}
 import com.amazonaws.services.dynamodbv2.model.{AttributeValue, UpdateItemRequest}
+
 import scala.collection.convert.wrapAsJava._
 
-class PageViewStorage(client: AmazonDynamoDBAsyncClient) {
+class PageViewStorage(client: AmazonDynamoDBClient) {
 
   val table = EventProcessor.tableName
 
@@ -12,10 +13,10 @@ class PageViewStorage(client: AmazonDynamoDBAsyncClient) {
     Map("browserId" -> new AttributeValue().withS(relevantPageView.browserId.id), "userId" -> new AttributeValue().withS(relevantPageView.userId.getOrElse("None")))
 
 
-  def putPageView(relevantPageView: RelevantPageView, time: Long) {
+  def putPageView(relevantPageView: RelevantPageView) {
 
     val entryKey = entryKeyFor(relevantPageView)
-    val timeAttribute = new AttributeValue().withN(time.toString)
+    val timeAttribute = new AttributeValue().withN(relevantPageView.time.toEpochMilli.toString)
     val pathTimeAttribute = new AttributeValue().addMEntry(relevantPageView.path, timeAttribute)
     relevantPageView.tags.foreach { tag =>
 
