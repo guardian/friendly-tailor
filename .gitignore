@@ -31,6 +31,8 @@ project/target
 project/boot/
 project/plugins/project/
 
+/dynamodb-local/
+
 # Frontend
 .sass-cache
 bower_components
