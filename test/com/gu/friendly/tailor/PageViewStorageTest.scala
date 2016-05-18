@@ -72,4 +72,14 @@ class PageViewStorageTest extends org.scalatest.FunSpec with org.scalatest.Match
       ))
     }
   }
+  it("should update an already seen page view with the latest time") {
+    LocalDynamoDB.usingTable(client)(table)('browserId -> S, 'userId -> S) {
+
+      pageViewStorage.putPageView(fooLooksAtBojo)
+      pageViewStorage.putPageView(fooLooksAtBojo.copy(time = Instant.ofEpochMilli(4)))
+
+      getStoredPageViewsForFoo().pageViewsByTag should equal(Map(
+        "politics/eu-referendum" -> Map("/politics/2016/may/17/boris-johnon-no-guarantee-vote-to-remain-will-settle-eu-issue-for-ever" -> 4L)))
+    }
+  }
 }
