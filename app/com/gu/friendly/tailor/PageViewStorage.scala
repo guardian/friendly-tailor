@@ -24,7 +24,11 @@ class PageViewStorage(client: AmazonDynamoDBClient) extends LazyLogging {
       client.updateItem(configure(new UpdateItemRequest().withTableName(table).withKey(entryKey)))
     }
 
-    relevantPageView.tags.foreach { tag =>
+    val setUserIdString= relevantPageView.userId.map(_ => s", userIdIndexKey = :userId").mkString
+    val setUserExpressionValue: Map[String, AttributeValue] =
+      relevantPageView.userId.map(userId => ":userId" -> new AttributeValue().withS(userId)).toMap
+
+      relevantPageView.tags.foreach { tag =>
       def hasSetPageView(updateResult: UpdateItemResult): Boolean = (for {
         attributes <- Option(updateResult.getAttributes)
         pageViewsByTag <- attributes.asScala.get("pageViewsByTag")
@@ -32,20 +36,20 @@ class PageViewStorage(client: AmazonDynamoDBClient) extends LazyLogging {
         timeAttributeInDb <- timeByPathAttribute.getM.asScala.get(relevantPageView.path)
       } yield timeAttributeInDb == timeAttribute).getOrElse(false)
 
-      val initialMapResult = executeUpdate(_.withUpdateExpression("SET pageViewsByTag = if_not_exists(pageViewsByTag,:initialMapResult)")
+      val initialMapResult = executeUpdate(_.withUpdateExpression("SET pageViewsByTag = if_not_exists(pageViewsByTag,:initialMapResult)"+setUserIdString)
         .withReturnValues(UPDATED_NEW)
-        .withExpressionAttributeValues(Map(":initialMapResult" -> new AttributeValue().addMEntry(tag, pathTimeAttribute))))
+        .withExpressionAttributeValues(setUserExpressionValue ++ Map(":initialMapResult" -> new AttributeValue().addMEntry(tag, pathTimeAttribute))))
 
       if (!hasSetPageView(initialMapResult)) {
-        val tagMapResult = executeUpdate(_.withUpdateExpression("SET pageViewsByTag.#tag = if_not_exists(pageViewsByTag.#tag, :initialTagMap)")
+        val tagMapResult = executeUpdate(_.withUpdateExpression("SET pageViewsByTag.#tag = if_not_exists(pageViewsByTag.#tag, :initialTagMap)"+setUserIdString)
           .withReturnValues(UPDATED_NEW)
           .withExpressionAttributeNames(Map("#tag" -> tag))
-          .withExpressionAttributeValues(Map(":initialTagMap" -> pathTimeAttribute)))
+          .withExpressionAttributeValues(setUserExpressionValue ++ Map(":initialTagMap" -> pathTimeAttribute)))
 
         if (!hasSetPageView(tagMapResult)) {
-          executeUpdate(_.withUpdateExpression("SET pageViewsByTag.#tag.#path = :time")
+          executeUpdate(_.withUpdateExpression("SET pageViewsByTag.#tag.#path = :time"+setUserIdString)
             .withExpressionAttributeNames(Map("#tag" -> tag, "#path" -> relevantPageView.path))
-            .withExpressionAttributeValues(Map(":time" -> timeAttribute)))
+            .withExpressionAttributeValues(setUserExpressionValue ++ Map(":time" -> timeAttribute)))
         }
       }
     }
