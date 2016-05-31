@@ -36,7 +36,9 @@ class EventProcessor() extends IRecordProcessor with LazyLogging {
   override def processRecords(records: JList[Record], checkpointer: IRecordProcessorCheckpointer): Unit = {
     val allEvents = records.map(deserializeToEvent)
     val relevantPageViews = allEvents.flatMap(relevantPageView)
-    logger.info(s"received ${allEvents.size} events, ${relevantPageViews.size} relevant page views")
+    val earliestEvent = allEvents.minBy(_.dt).instant
+    val latestEvent = allEvents.maxBy(_.dt).instant
+    logger.info(s"received ${allEvents.size} events, ${relevantPageViews.size} relevant page views, earliest event at $earliestEvent, most recent event at $latestEvent")
     relevantPageViews.foreach { pageView =>
       Try(pageViewStorage.putPageView(pageView)).recover {
         case e => logger.error(s"failed to process $pageView", e)
@@ -65,6 +67,10 @@ object EventProcessor extends LazyLogging {
 
   logger.info(s"Table name = $tableName")
 
+  implicit class RichEvent(event: Event) {
+    lazy val instant = Instant.ofEpochMilli(event.dt)
+  }
+
   def deserializeToEvent(record: Record): Event =
     ThriftSerializer.fromByteBuffer(record.getData)(Event.decoder)
 
@@ -73,7 +79,7 @@ object EventProcessor extends LazyLogging {
     path = pv.page.url.path
     tagsForPath = MonitoredTags.tagsForPath(path)
     if tagsForPath.nonEmpty
-  } yield RelevantPageView(path, tagsForPath, Instant.ofEpochMilli(ev.dt), ev.browserId, ev.userId)
+  } yield RelevantPageView(path, tagsForPath, ev.instant, ev.browserId, ev.userId)
 
 }
 
