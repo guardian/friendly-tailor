@@ -1,20 +1,26 @@
 package com.gu.friendly.tailor
 
+import java.time.Instant
 import java.util.{List => JList}
 
-import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.regions.Regions._
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient
-import com.amazonaws.services.dynamodbv2.model.{AttributeAction, AttributeValue, AttributeValueUpdate}
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.{IRecordProcessor, IRecordProcessorCheckpointer, IRecordProcessorFactory}
 import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownReason
 import com.amazonaws.services.kinesis.model.Record
 import com.typesafe.scalalogging.LazyLogging
-import ophan.thrift.event.Event
+import ophan.thrift.event.{AssignedId, Event}
 
 import scala.collection.convert.wrapAll._
-import scala.collection.convert.decorateAsJava._
 import scala.util.Try
+
+case class RelevantPageView(
+  path: String,
+  tags: Set[String],
+  time: Instant,
+  browserId: AssignedId,
+  userId: Option[String]
+)
 
 class EventProcessor() extends IRecordProcessor with LazyLogging {
 
@@ -28,11 +34,14 @@ class EventProcessor() extends IRecordProcessor with LazyLogging {
   }
 
   override def processRecords(records: JList[Record], checkpointer: IRecordProcessorCheckpointer): Unit = {
-    val actions = records.map(deserializeToEvent)
-    print(s"${actions.size} ")
-    actions.foreach { ev =>
-      Try(processPageView(ev)).recover {
-        case e => println(e.getClass)
+    val allEvents = records.map(deserializeToEvent)
+    val relevantPageViews = allEvents.flatMap(relevantPageView)
+    val earliestEvent = allEvents.minBy(_.dt).instant
+    val latestEvent = allEvents.maxBy(_.dt).instant
+    logger.info(s"received ${allEvents.size} events, ${relevantPageViews.size} relevant page views, earliest event at $earliestEvent, most recent event at $latestEvent")
+    relevantPageViews.foreach { pageView =>
+      Try(pageViewStorage.putPageView(pageView)).recover {
+        case e => logger.error(s"failed to process $pageView", e)
       }
     }
 
@@ -50,37 +59,28 @@ class EventProcessor() extends IRecordProcessor with LazyLogging {
 
 object EventProcessor extends LazyLogging {
 
-  val dynamoDBClient:AmazonDynamoDBClient  = new AmazonDynamoDBClient(new ProfileCredentialsProvider("membership")).withRegion(EU_WEST_1)
+  val dynamoDBClient:AmazonDynamoDBClient  = new AmazonDynamoDBClient(EventsConsumer.defaultCredentialsProvider).withRegion(EU_WEST_1)
 
   val tableName = s"${Config.app}-${Config.stage}"
 
+  val pageViewStorage = new PageViewStorage(dynamoDBClient)
+
   logger.info(s"Table name = $tableName")
+
+  implicit class RichEvent(event: Event) {
+    lazy val instant = Instant.ofEpochMilli(event.dt)
+  }
 
   def deserializeToEvent(record: Record): Event =
     ThriftSerializer.fromByteBuffer(record.getData)(Event.decoder)
 
-  def processPageView(ev: Event) = for {
+  def relevantPageView(ev: Event):Option[RelevantPageView] = for {
     pv <- ev.pageView
     path = pv.page.url.path
     tagsForPath = MonitoredTags.tagsForPath(path)
     if tagsForPath.nonEmpty
-  } {
-    val keyMap = Map(
-      "browserId" -> new AttributeValue().withS(ev.browserId.id),
-      "userId" -> new AttributeValue().withS(ev.userId.getOrElse("None"))
-    )
+  } yield RelevantPageView(path, tagsForPath, ev.instant, ev.browserId, ev.userId)
 
-    val addPathUpdate = new AttributeValueUpdate().withAction(AttributeAction.ADD).withValue(new AttributeValue().withSS(path))
-
-    Try(
-      dynamoDBClient.updateItem(
-        tableName,
-        keyMap,
-        tagsForPath.map(_ -> addPathUpdate).toMap.asJava
-      )).recover {
-      case e => println(e.getClass)
-    }
-  }
 }
 
 object EventProcessorFactory extends IRecordProcessorFactory {

@@ -8,3 +8,5 @@ resolvers += "twitter-repo" at "https://maven.twttr.com"
 addSbtPlugin("com.typesafe.play" % "sbt-plugin" % "2.4.6")
 
 addSbtPlugin("com.gu" % "sbt-riffraff-artifact" % "0.8.4")
+
+addSbtPlugin("com.localytics" % "sbt-dynamodb" % "1.4.1")
